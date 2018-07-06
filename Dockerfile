@@ -1,18 +1,18 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 MAINTAINER Afterster
 
-RUN echo 'deb http://download.videolan.org/pub/debian/stable/ /' >> /etc/apt/sources.list
-RUN echo 'deb-src http://download.videolan.org/pub/debian/stable/ /' >> /etc/apt/sources.list
-RUN echo 'deb http://archive.ubuntu.com/ubuntu trusty main multiverse' >> /etc/apt/sources.list
+#RUN echo 'deb http://download.videolan.org/pub/debian/stable/ /' >> /etc/apt/sources.list
+#RUN echo 'deb-src http://download.videolan.org/pub/debian/stable/ /' >> /etc/apt/sources.list
+#RUN echo 'deb http://archive.ubuntu.com/ubuntu trusty main multiverse' >> /etc/apt/sources.list
 
 RUN apt-get update
 RUN apt-get -y upgrade
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install wget inotify-tools
-RUN wget -O - https://download.videolan.org/pub/debian/videolan-apt.asc|sudo apt-key add -
-RUN apt-get update
+#RUN wget -O - https://download.videolan.org/pub/debian/videolan-apt.asc|sudo apt-key add -
+#RUN apt-get update
 
 # Need this environment variable otherwise mysql will prompt for passwords
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-server apache2 wget php5 php5-json php5-curl php5-mysqlnd pwgen lame libvorbis-dev vorbis-tools flac libmp3lame-dev libavcodec-extra* libfaac-dev libtheora-dev libvpx-dev libav-tools git
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-server apache2 wget php php-json php-curl php-mysqlnd pwgen lame libvorbis-dev vorbis-tools flac libmp3lame-dev libavcodec-extra* libfaac-dev libtheora-dev libvpx-dev libav-tools git libapache2-mod-php php-xml php-gd
 
 # Install composer for dependency management
 RUN php -r "readfile('https://getcomposer.org/installer');" | php && \
@@ -24,10 +24,12 @@ ADD https://github.com/ampache/ampache/archive/master.tar.gz /opt/ampache-master
 ADD ampache.cfg.php.dist /var/temp/ampache.cfg.php.dist
 
 # extraction / installation
-RUN rm -rf /var/www/* && \
-    tar -C /var/www -xf /opt/ampache-master.tar.gz ampache-master --strip=1 && \
-    cd /var/www && composer install --prefer-source --no-interaction && \
-    chown -R www-data /var/www
+RUN rm -rf /var/www/html/* && \
+    tar -C /var/www/html -xf /opt/ampache-master.tar.gz ampache-master --strip=1 && \
+    cd /var/www/html && composer install --prefer-source --no-interaction && \
+    chown -R www-data /var/www/html
+
+RUN apt-get -y install cron socat
 
 # setup mysql like this project does it: https://github.com/tutumcloud/tutum-docker-mysql
 # Remove pre-installed database
@@ -47,11 +49,11 @@ RUN ln -s /etc/apache2/sites-available/001-ampache.conf /etc/apache2/sites-enabl
 RUN a2enmod rewrite
 
 # Add job to cron to clean the library every night
-RUN echo '30 7    * * *   www-data php /var/www/bin/catalog_update.inc' >> /etc/crontab
+RUN echo '30 7    * * *   www-data php /var/www/html/bin/catalog_update.inc' >> /etc/crontab
 
 VOLUME ["/media"]
-VOLUME ["/var/www/config"]
-VOLUME ["/var/www/themes"]
+VOLUME ["/var/www/html/config"]
+VOLUME ["/var/www/html/themes"]
 EXPOSE 80
 
 CMD ["/run.sh"]
